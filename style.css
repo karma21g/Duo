@@ -1,8 +1,7 @@
 body {
   font-family: Arial;
-  background: #111;
-  color: white;
   text-align: center;
+  background: #f5f5f5;
 }
 
 button {
@@ -13,7 +12,6 @@ button {
 
 .choice {
   display: block;
-  background: #333;
-  margin: 8px auto;
+  margin: 10px auto;
   width: 200px;
 }
