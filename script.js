@@ -1,13 +1,22 @@
 // 🔥 Firebase config
+// Import the functions you need from the SDKs you need
+import { initializeApp } from "firebase/app";
+// TODO: Add SDKs for Firebase products that you want to use
+// https://firebase.google.com/docs/web/setup#available-libraries
+
+// Your web app's Firebase configuration
 const firebaseConfig = {
-  apiKey: "TA_API_KEY",
-  authDomain: "TON_PROJET.firebaseapp.com",
-  databaseURL: "https://TON_PROJET-default-rtdb.firebaseio.com",
-  projectId: "TON_PROJET",
-  appId: "TON_APP_ID"
+  apiKey: "AIzaSyCtFyop8bPMLgW0S2YcOJtCHKvKDlxKdtY",
+  authDomain: "almi-6115d.firebaseapp.com",
+  databaseURL: "https://almi-6115d-default-rtdb.firebaseio.com",
+  projectId: "almi-6115d",
+  storageBucket: "almi-6115d.firebasestorage.app",
+  messagingSenderId: "1034788522244",
+  appId: "1:1034788522244:web:7a9bba256395e8b6ab2851"
 };
 
-firebase.initializeApp(firebaseConfig);
+// Initialize Firebase
+const app = initializeApp(firebaseConfig);
 const db = firebase.database();
 
 // 🧠 Variables globales
