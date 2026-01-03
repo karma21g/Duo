@@ -1,94 +1,143 @@
-import { QUESTIONS } from "./questions.js";
-import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js";
-import { getDatabase, ref, set, get, onValue } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-database.js";
-
-/* 🔥 CONFIG FIREBASE */
+// 🔥 Firebase config
 const firebaseConfig = {
-  apiKey: "AIzaSyCtFyop8bPMLgW0S2YcOJtCHK...",
-  authDomain: "almi-6115d.firebaseapp.com",
-  databaseURL: "https://almi-6115d-default-rtdb.firebaseio.com",
-  projectId: "almi-6115d",
-  storageBucket: "almi-6115d.appspot.com",
-  messagingSenderId: "1034788522244",
-  appId: "1:1034788522244:web:7a9bba2563..."
+  apiKey: "TA_API_KEY",
+  authDomain: "TON_PROJET.firebaseapp.com",
+  databaseURL: "https://TON_PROJET-default-rtdb.firebaseio.com",
+  projectId: "TON_PROJET",
+  appId: "TON_APP_ID"
 };
 
-const app = initializeApp(firebaseConfig);
-const db = getDatabase(app);
+firebase.initializeApp(firebaseConfig);
+const db = firebase.database();
 
-let gameId = null;
+// 🧠 Variables globales
+let gameCode = null;
 let player = null;
 let currentQuestion = 0;
-let selectedQuestions = [];
+let realAnswer = null;
 
-/* 🎲 OUTILS */
-function shuffle(array) {
-  return array.sort(() => Math.random() - 0.5);
+// ❓ Questions
+const questions = [
+  {
+    text: "Tu préfères ?",
+    choices: ["Netflix", "Sortir", "Dormir"]
+  },
+  {
+    text: "Le week-end idéal ?",
+    choices: ["Plage", "Maison", "Voyage"]
+  }
+];
+
+// 🔢 Générer code
+function generateCode() {
+  return Math.random().toString(36).substring(2, 6).toUpperCase();
 }
 
-/* 🎮 CRÉER PARTIE */
-window.createGame = async () => {
-  player = document.getElementById("pseudo").value;
-  if (!player) return alert("Entre un pseudo");
+// 🧑‍🚀 Créer partie
+function createGame() {
+  const pseudo = document.getElementById("pseudo").value;
+  if (!pseudo) return alert("Entre un pseudo");
 
-  gameId = Math.random().toString(36).substring(2, 7).toUpperCase();
-  selectedQuestions = shuffle([...QUESTIONS]).slice(0, 20);
+  gameCode = generateCode();
+  player = "p1";
 
-  await set(ref(db, "games/" + gameId), {
-    questions: selectedQuestions,
-    players: { A: player }
+  db.ref("games/" + gameCode).set({
+    status: "waiting",
+    players: {
+      p1: pseudo
+    }
   });
 
-  alert("Code de partie : " + gameId);
-  waitForPlayer();
-};
+  localStorage.setItem("gameCode", gameCode);
+  localStorage.setItem("player", player);
 
-/* 🔗 REJOINDRE */
-window.joinGame = async () => {
-  player = document.getElementById("pseudo").value;
-  gameId = document.getElementById("code").value;
-
-  if (!player || !gameId) return;
-
-  await set(ref(db, "games/" + gameId + "/players/B"), player);
-  startGame();
-};
-
-/* ⏳ ATTENTE */
-function waitForPlayer() {
-  onValue(ref(db, "games/" + gameId + "/players"), snap => {
-    if (snap.exists() && snap.val().B) startGame();
-  });
-}
-
-/* ▶️ JEU */
-function startGame() {
   document.getElementById("login").style.display = "none";
-  document.getElementById("game").style.display = "block";
-  showQuestion();
+  document.getElementById("waiting").style.display = "block";
+  document.getElementById("gameCode").innerText = gameCode;
+
+  waitForPlayer();
 }
 
-function showQuestion() {
-  const q = selectedQuestions[currentQuestion];
+// 🤝 Rejoindre partie
+function joinGame() {
+  const pseudo = document.getElementById("pseudo").value;
+  const code = document.getElementById("codeInput").value;
+  if (!pseudo || !code) return alert("Champs manquants");
+
+  gameCode = code;
+  player = "p2";
+
+  const ref = db.ref("games/" + gameCode);
+
+  ref.once("value", snap => {
+    if (!snap.exists()) return alert("Partie inexistante");
+
+    ref.child("players/p2").set(pseudo);
+    ref.child("status").set("playing");
+
+    localStorage.setItem("gameCode", gameCode);
+    localStorage.setItem("player", player);
+
+    startGame();
+  });
+}
+
+// ⏳ Attente joueur 2
+function waitForPlayer() {
+  db.ref("games/" + gameCode + "/status").on("value", snap => {
+    if (snap.val() === "playing") {
+      startGame();
+    }
+  });
+}
+
+// ▶️ Lancer le jeu
+function startGame() {
+  document.getElementById("waiting").style.display = "none";
+  document.getElementById("game").style.display = "block";
+  loadQuestion();
+}
+
+// ❓ Charger question
+function loadQuestion() {
+  const q = questions[currentQuestion];
   document.getElementById("question").innerText = q.text;
 
   const choicesDiv = document.getElementById("choices");
   choicesDiv.innerHTML = "";
 
-  q.choices.forEach(choice => {
+  q.choices.forEach((choice, index) => {
     const btn = document.createElement("button");
     btn.innerText = choice;
     btn.className = "choice";
-    btn.onclick = () => nextQuestion();
+
+    btn.onclick = () => selectReal(index);
     choicesDiv.appendChild(btn);
   });
 }
 
-function nextQuestion() {
-  currentQuestion++;
-  if (currentQuestion < selectedQuestions.length) {
-    showQuestion();
-  } else {
-    document.getElementById("game").innerHTML = "<h2>Fin de la partie 🎉</h2>";
-  }
+// ✅ Réponse réelle
+function selectReal(index) {
+  realAnswer = index;
+  alert("Maintenant choisis ce que tu penses que l’autre a choisi");
+
+  document.querySelectorAll(".choice").forEach((btn, i) => {
+    btn.onclick = () => selectGuess(i);
+  });
 }
+
+// 🤔 Supposition
+function selectGuess(index) {
+  const path = `games/${gameCode}/answers/q${currentQuestion}/${player}`;
+  db.ref(path).set({
+    real: realAnswer,
+    guess: index
+  });
+
+  currentQuestion++;
+  if (currentQuestion < questions.length) {
+    loadQuestion();
+  } else {
+    alert("Partie terminée 🎉");
+  }
+                    }
